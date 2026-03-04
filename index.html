@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>PINS & NEEDLES · RADIO</title>
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&family=Space+Mono&family=Audiowide&display=swap" rel="stylesheet">
   <!-- LiveKit Client -->
   <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.js"></script>
   <style>
-    /* ========== YOUR EXISTING CSS (keep everything) ========== */
+    /* ========== COMPLETE STYLES ========== */
     * { margin:0; padding:0; box-sizing:border-box; }
     :root {
       --bg: #0b0c0f; --surface0: #13151c; --surface1: #1e212a; --surface2: #2a2e3a;
@@ -213,7 +213,7 @@
 
   <!-- BOOTH PANEL -->
   <div class="panel" id="panel-booth">
-    <!-- TEST TONE BUTTON (optional) -->
+    <!-- TEST TONE BUTTON -->
     <button class="add-btn" onclick="testTone()" style="margin-bottom:10px; background:var(--accent-gold); color:#000;">🔊 Test Tone (beep)</button>
 
     <div class="np-bar"><div class="np-v" id="npVinyl"></div><div class="np-txt"><div class="np-t" id="npTitle">No track loaded</div><div class="np-a" id="npArtist">Add your demos in Songs</div></div><div class="np-d" id="npDur">—</div></div>
@@ -316,9 +316,7 @@
     let playlists = [{name:"PINS&NEEDLES",id:"PL37s8KbwrYd8g6mMZs5WJB2UnTREmqj-M"}];
     let activePl = 0;
     let isAdmin = false;
-
-    // LiveKit room reference
-    let liveKitRoom = null;
+    let liveKitRoom = null; // LiveKit room instance
 
     // Helper functions
     function ts(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
@@ -411,7 +409,7 @@
       checkSlot();
     }
 
-    // Admin functions (unchanged – keep them as before)
+    // Admin functions
     function doAdminLogin() {
       const code = document.getElementById('adminCode').value.trim();
       if (code !== ADMIN_CODE) {
@@ -693,7 +691,7 @@
     function setMusicVol(v) { musicVol = v/100; if (audioEl && !isDucked) audioEl.volume = musicVol; if (musicGain && !isDucked) musicGain.gain.value = musicVol; document.getElementById('mVolVal').textContent = v+'%'; }
     function setMicVol(v) { micVol = v/100; if (micGain) micGain.gain.value = micVol; document.getElementById('vVolVal').textContent = v+'%'; }
 
-    // Microphone (unchanged)
+    // Microphone
     async function togMic() {
       if (!micOn) {
         try {
@@ -750,23 +748,31 @@
       }
       frame();
     }
+
+    // ========== IMPROVED DUCKING FUNCTION ==========
     function startDuck() {
       if (!micAna) return;
+
       const data = new Uint8Array(micAna.frequencyBinCount);
+
       duckTmr = setInterval(() => {
         if (!micOn) return;
+
         micAna.getByteFrequencyData(data);
         const level = data.reduce((a, b) => a + b, 0) / data.length;
+
         if (level > 60) {
           isDucked = true;
           if (musicGain) musicGain.gain.value = musicVol * 0.3;
           else if (audioEl) audioEl.volume = musicVol * 0.3;
+
           document.getElementById('duckM').style.width = '30%';
           document.getElementById('duckV').style.width = '100%';
         } else {
           isDucked = false;
           if (musicGain) musicGain.gain.value = musicVol;
           else if (audioEl) audioEl.volume = musicVol;
+
           document.getElementById('duckM').style.width = '100%';
           document.getElementById('duckV').style.width = '0%';
         }
@@ -815,7 +821,7 @@
       }
     }
 
-    // ========== LIVEKIT BROADCASTING ==========
+    // ========== LIVE TOGGLE (LIVEKIT) ==========
     async function togLive() {
       const i = djQueue.findIndex(d => d.code === logCode);
       if (i !== activeSlot && !isLive) { 
@@ -831,34 +837,32 @@
       const btn = document.getElementById('liveBtn');
       
       if (isLive) {
-        // Stop YouTube (optional)
-        stopYT();
+        stopYT(); // optional
+        if (isPrem && camStream) showVid(camStream);
         
         try {
-          // 1. Get a token from your token server
+          // 1. Get token from your token server
           const roomName = 'pinsradio';
           const identity = logName || 'DJ_' + Math.random().toString(36).substring(7);
           const tokenRes = await fetch(`http://159.223.192.8:3001/token?room=${roomName}&identity=${encodeURIComponent(identity)}`);
-          if (!tokenRes.ok) throw new Error('Failed to get token');
+          if (!tokenRes.ok) throw new Error('Token server error');
           const { token } = await tokenRes.json();
           
           // 2. Connect to LiveKit
           const room = new LiveKit.Room();
           await room.connect('wss://pindigtal-w87ngpeu.livekit.cloud', token);
           
-          // 3. Publish microphone or system audio
-          // If you have micOn, you can get the track from micStream, otherwise from audioEl
+          // 3. Publish audio (mic first, then fallback)
           if (micOn && micStream) {
             const audioTrack = micStream.getAudioTracks()[0];
             await room.localParticipant.publishTrack(audioTrack);
           } else if (audioEl) {
-            // Capture audio from audio element (if supported)
+            // try to capture from audio element (if supported)
             const stream = audioEl.captureStream ? audioEl.captureStream() : audioEl.mozCaptureStream ? audioEl.mozCaptureStream() : null;
             if (stream) {
               const audioTrack = stream.getAudioTracks()[0];
               await room.localParticipant.publishTrack(audioTrack);
             } else {
-              // Fallback: enable microphone anyway
               await room.localParticipant.enableAudio();
             }
           } else {
@@ -875,36 +879,46 @@
           document.getElementById('liveLbl').textContent = '■ End Broadcast';
           
           if (!djPlaying && audioEl) { 
-            try {
-              await audioEl.play(); 
-              djPlaying = true; 
-              document.getElementById('djPlayBtn').textContent = '⏸'; 
-              document.getElementById('npVinyl').classList.add('go');
-            } catch (e) {
-              console.warn('Play failed', e);
-            }
+            try { await audioEl.play(); djPlaying = true; document.getElementById('djPlayBtn').textContent = '⏸'; document.getElementById('npVinyl').classList.add('go'); } catch (e) {}
           }
-          
-          if (!isPlaying) { 
-            isPlaying = true; 
-            updPlay(); 
-            startWF(); 
-            vinylGo(true); 
-          }
+          if (!isPlaying) { isPlaying = true; updPlay(); startWF(); vinylGo(true); }
           
           chat('PNR', `${isPrem ? '👑' : '🔴'} ${logName} is LIVE on Pins & Needles Radio!${micOn ? ' 🎙' : ''}`, 'bot');
         } catch (error) {
-          console.error('LiveKit connection failed:', error);
+          console.error('Live connection failed:', error);
           chat('PNR', `⚠ Live connection failed: ${error.message}`, 'bot');
           isLive = false;
         }
       } else {
-        // End broadcast
-        if (liveKitRoom) {
-          liveKitRoom.disconnect();
-          liveKitRoom = null;
-        }
+        if (liveKitRoom) liveKitRoom.disconnect();
         endLive();
+      }
+    }
+
+    async function togDJPlay() {
+      if (!audioEl || !songs.length) { 
+        document.getElementById('fileInput').click(); 
+        return; 
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch (e) { console.warn('Could not resume audio context', e); }
+      }
+      djPlaying = !djPlaying;
+      if (djPlaying) { 
+        try {
+          await audioEl.play(); 
+          document.getElementById('djPlayBtn').textContent = '⏸'; 
+          document.getElementById('npVinyl').classList.add('go');
+        } catch (e) {
+          console.warn('Playback failed:', e);
+          showError('Playback failed – tap screen first and try again');
+          chat('PNR', '⚠ Playback failed – tap screen first', 'bot');
+          djPlaying = false;
+        }
+      } else { 
+        audioEl.pause(); 
+        document.getElementById('djPlayBtn').textContent = '▶'; 
+        document.getElementById('npVinyl').classList.remove('go');
       }
     }
 
