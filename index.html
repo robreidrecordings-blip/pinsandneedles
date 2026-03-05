@@ -56,8 +56,8 @@
       osc.connect(dest);
       osc.start();
 
-      const track = dest.stream.getAudioTracks()[0];
-      alert('Mixed track ready: ' + (track ? 'YES' : 'NO'));
+    const TOKEN_ENDPOINT = 'http://159.223.192.8:3001/token';
+const WS_URL = 'wss://YOUR_REAL_PROJECT_WS_URL.livekit.cloud'; // from dashboard;
 
       // Token & connect code here (your existing fetch + LiveKit connect)
       // ...
