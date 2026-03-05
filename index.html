@@ -32,134 +32,39 @@
 <!-- Your full HTML body here – unchanged except minor debug adds -->
 
 <script>
-// ==================== FIXED AUDIO BROADCAST SCRIPT ====================
+  let audioCtx = null;
+  let dest = null;
 
-const TOKEN_ENDPOINT = 'http://159.223.192.8:3001/token';
-const WS_URL = 'wss://YOUR_PROJECT_NAME.livekit.cloud'; // ← REPLACE WITH REAL FROM DASHBOARD
-
-let djQueue = [], activeSlot = 0, slotLeft = 1800, slotTmr = null;
-let isLive = false, logCode = null, logName = null, isPrem = false;
-let audioCtx = null, destNode = null, musicGain = null, micGain = null;
-let micStream = null, camStream = null, audioEl = null;
-let songs = [], curIdx = -1;
-
-// Force resume AudioContext on first user interaction (mobile fix)
-document.addEventListener('touchstart', resumeAudio, { once: true });
-document.addEventListener('click', resumeAudio, { once: true });
-function resumeAudio() {
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => console.log('AudioContext resumed'));
-  }
-}
-
-// Login – add to queue so "No DJs yet" disappears
-function doLogin() {
-  const code = document.getElementById('djCodeIn').value.trim().toUpperCase();
-  if (!code.startsWith('PNR-') || code.length < 8) {
-    alert('Invalid code – must be PNR-XXXX');
-    return;
-  }
-  logName = 'DJ_' + code.slice(-4);
-  logCode = code;
-  isPrem = true; // for testing
-  djQueue.push({ name: logName, code, tier: 'premium', prem: true, joinedAt: new Date() });
-  activeSlot = 0;
-  renderRQ(); // Now shows your DJ
-  closeM('djModal');
-  document.getElementById('djBtn').textContent = `👑 ${logName}`;
-  goTab('booth', document.querySelector('.tab[onclick*="booth"]'));
-  alert(`Welcome ${logName}! Go to Booth → enable mic/music → GO LIVE`);
-}
-
-// Fixed togLive with full mixer setup
-async function togLive() {
-  if (!logCode) {
-    alert('Login as DJ first (DJ button)');
-    return;
-  }
-
-  isLive = !isLive;
-  const btn = document.getElementById('liveBtn');
-
-  if (isLive) {
-    try {
-      // Resume context if needed
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-      }
-
-      // Build mixer
-      destNode = audioCtx.createMediaStreamDestination();
-
-      if (audioEl) {
-        const src = audioCtx.createMediaElementSource(audioEl);
-        musicGain = audioCtx.createGain();
-        musicGain.gain.value = 0.8;
-        src.connect(musicGain).connect(destNode);
-      }
-
-      if (micStream) {
-        const src = audioCtx.createMediaStreamSource(micStream);
-        micGain = audioCtx.createGain();
-        micGain.gain.value = 0.9;
-        src.connect(micGain).connect(destNode);
-      }
-
-      const mixedTrack = destNode.stream.getAudioTracks()[0];
-      if (!mixedTrack || mixedTrack.readyState !== 'live') {
-        throw new Error('Mixed audio track invalid or silent');
-      }
-
-      // Get token
-      const identity = logName || 'DJ_Guest';
-      const res = await fetch(`${TOKEN_ENDPOINT}?room=pinsradio&identity=${encodeURIComponent(identity)}`);
-      if (!res.ok) throw new Error(`Token server error: ${res.status}`);
-      const { token } = await res.json();
-
-      // Connect & publish
-      const room = new LiveKit.Room();
-      await room.connect(WS_URL, token);
-      await room.localParticipant.publishTrack(mixedTrack, { name: 'DJ-Mix' });
-
-      // Camera if enabled
-      if (camStream) {
-        await room.localParticipant.publishTrack(camStream.getVideoTracks()[0]);
-        document.getElementById('liveVid').srcObject = camStream;
-        document.getElementById('liveVid').classList.remove('hidden');
-        document.getElementById('stageIdle').classList.add('hidden');
-      }
-
-      liveKitRoom = room;
-      btn.classList.add('live');
-      document.getElementById('liveLbl').textContent = '■ END LIVE';
-      alert('LIVE! Your mic + music mix is now broadcasting.');
-    } catch (e) {
-      console.error('Live error:', e);
-      alert('Failed to go live: ' + e.message + '\nCheck console (F12) or token server');
-      isLive = false;
-      btn.classList.remove('live');
-      document.getElementById('liveLbl').textContent = 'Go Live';
+  document.addEventListener('touchstart', async () => {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      await audioCtx.resume();
+      alert('Audio unlocked! Now try mic + GO LIVE');
     }
-  } else {
-    liveKitRoom?.disconnect();
-    liveKitRoom = null;
-    btn.classList.remove('live');
-    document.getElementById('liveLbl').textContent = 'Go Live';
+  }, { once: false });
+
+  async function togLive() {
+    alert('Attempting live...');
+    try {
+      if (!audioCtx) throw new Error('Tap screen first to unlock audio');
+
+      dest = audioCtx.createMediaStreamDestination();
+
+      // Test: add a simple oscillator
+      const osc = audioCtx.createOscillator();
+      osc.frequency.value = 440;
+      osc.connect(dest);
+      osc.start();
+
+      const track = dest.stream.getAudioTracks()[0];
+      alert('Mixed track ready: ' + (track ? 'YES' : 'NO'));
+
+      // Token & connect code here (your existing fetch + LiveKit connect)
+      // ...
+    } catch(e) {
+      alert('Error: ' + e.message);
+    }
   }
-}
-
-// Your other functions (togMic, togCam, addFiles, renderRQ, etc.) remain the same
-// Just ensure togMic/togCam call rebuildMixer() if you add that function
-
-// Init
-window.addEventListener('load', () => {
-  loadQueue();
-  renderRQ();
-  // ... your other init
-});
 </script>
 </body>
 </html>
