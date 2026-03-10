@@ -3,11 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>PINS & NEEDLES · RADIO</title>
+  <title>PINS & NEEDLES RADIO – Live Community Radio</title>
+  <meta name="description" content="PINS & NEEDLES RADIO: Live DJ broadcasts, original music, and community marketplace. Join the queue and go live!">
+  <meta property="og:title" content="PINS & NEEDLES RADIO">
+  <meta property="og:description" content="Live DJ radio – broadcast your own music or listen to others.">
+  <meta property="og:url" content="https://pinsandneedlesrecords.com">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&family=Space+Mono&family=Audiowide&display=swap" rel="stylesheet">
-  <!-- LiveKit client with fallback -->
+  <!-- LiveKit client -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
   <script>
+    // Fallback if first CDN fails
     window.addEventListener('load', function() {
       if (typeof Livekit === 'undefined') {
         var script = document.createElement('script');
@@ -17,7 +24,7 @@
     });
   </script>
   <style>
-    /* ========== YOUR FULL CSS (keep exactly as before) ========== */
+    /* ========== YOUR FULL CSS (same as before) ========== */
     * { margin:0; padding:0; box-sizing:border-box; }
     :root {
       --bg: #0b0c0f; --surface0: #13151c; --surface1: #1e212a; --surface2: #2a2e3a;
@@ -238,7 +245,19 @@
   </div>
 
   <!-- SONGS PANEL -->
-  <div class="panel" id="panel-songs"><div class="copyright-note"><b>⚠ Original Music Only</b><br>Your own demos only.</div><button class="add-btn" onclick="document.getElementById('fileInput').click()">+ Add Your Demos</button><div class="slbl">Your Queue</div><div id="songList"></div><input type="file" id="fileInput" accept="audio/*" multiple onchange="addFiles(this.files)"></div>
+  <div class="panel" id="panel-songs">
+    <div class="copyright-note"><b>⚠ Original Music Only</b><br>Your own demos only.</div>
+    <button class="add-btn" onclick="document.getElementById('fileInput').click()">+ Add Your Demos</button>
+    <div class="slbl">Your Queue</div>
+    <div id="songList"></div>
+    <input type="file" id="fileInput" accept="audio/*" multiple onchange="addFiles(this.files)">
+    <!-- Example Gumroad buy button placeholder – you can replace with actual product links -->
+    <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;">
+      <div class="slbl">Buy Tracks (example)</div>
+      <a class="gumroad-button" href="https://gum.co/example" target="_blank">Buy for £1</a>
+      <script src="https://gumroad.com/js/gumroad.js"></script>
+    </div>
+  </div>
 
   <!-- CHAT PANEL -->
   <div class="panel" id="panel-chat"><div class="chat-msgs" id="chatMsgs"></div><div class="chat-in"><input type="text" id="chatName" placeholder="Your name" maxlength="20"><div class="chat-row"><input type="text" id="chatMsg" placeholder="Say something..." maxlength="180" onkeydown="if(event.key==='Enter')sendMsg()"><button class="sbtn" onclick="sendMsg()">Send</button></div></div></div>
@@ -310,7 +329,7 @@
     const SLOT_FREE = 30 * 60;
     const SLOT_SUB = 60 * 60;
     const SANDBOX_URL = 'https://cloud-api.livekit.io/api/sandbox/connection-details';
-    const SANDBOX_ID = 'pindigtal-2454k0';
+    const SANDBOX_ID = 'pindigtal-10np7p'; // Replace with your actual sandbox ID if different
 
     // ==================== GLOBAL STATE ====================
     let djQueue = [], activeSlot = 0, slotLeft = SLOT_FREE, slotTmr = null;
